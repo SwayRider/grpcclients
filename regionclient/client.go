@@ -206,9 +206,9 @@ func (c *Client) FindCrossingLocations(
 			ToLocation:       &geo.Coordinate{Lat: toLocation.Latitude, Lon: toLocation.Longitude},
 			ConfigOneof:      &regionv1.FindCrossingLocationsRequest_SimpleConfig{
 				SimpleConfig: &regionv1.BorderCrossingSimpleConfig{
-					RoadTypeOrder: rtOrder, 
+					RoadTypeOrder: rtOrder,
 					RoadTypeDelta: cfg.RoadTypeDelta,
-				
+					DropDistance:  cfg.DropDistance,
 			}},
 			Limit:            int32(limit),
 		}

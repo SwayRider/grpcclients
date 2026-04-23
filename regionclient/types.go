@@ -42,7 +42,7 @@ func ToRoadType(code int32) RoadType {
 func (rt RoadType) ToCode() int32 {
 	switch rt {
 		case RT_MOTORWAY:
-			return 1
+			return 0
 		case RT_TRUNK:
 			return 1
 		case RT_PRIMARY:
@@ -69,6 +69,7 @@ type BorderCrossingConfig interface {
 type BorderCrossingSimpleConfig struct {
 	RoadTypeOrder []RoadType
 	RoadTypeDelta float64
+	DropDistance  float64
 }
 
 func (c BorderCrossingSimpleConfig) Type() string {

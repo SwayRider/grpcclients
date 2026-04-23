@@ -637,6 +637,7 @@ func (c Client) ListServiceClients(
 	serviceClientCtor ServiceClientCtor,
 ) (
 	clients []ServiceClient,
+	numClients int32,
 	err error,
 ) {
 	if err = c.CheckConnection(); err != nil {
@@ -663,5 +664,6 @@ func (c Client) ListServiceClients(
 			client.Scopes...,
 		)
 	}
+	numClients = res.NumClients
 	return
 }

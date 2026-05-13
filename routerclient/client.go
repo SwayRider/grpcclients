@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/metadata"
 	"github.com/swayrider/grpcclients"
 	"github.com/swayrider/grpcclients/internal/client"
 	geo "github.com/swayrider/protos/common_types/geo"
@@ -78,7 +79,20 @@ func (c Client) Ping() error {
 	return err
 }
 
+// Route calls routerservice with a fresh background context.
 func (c Client) Route(
+	accessToken string,
+	query RouteQuery,
+	routeCtor RouteCtor,
+	stepCtor RouteStepCtor,
+) (Route, error) {
+	return c.RouteWithContext(context.Background(), accessToken, query, routeCtor, stepCtor)
+}
+
+// RouteWithContext calls routerservice, appending the authorization header to
+// any outgoing metadata already present in ctx (e.g. forwarded user identity).
+func (c Client) RouteWithContext(
+	ctx context.Context,
 	accessToken string,
 	query RouteQuery,
 	routeCtor RouteCtor,
@@ -91,7 +105,10 @@ func (c Client) Route(
 		return
 	}
 
-	ctx, cancel := c.AuthorizedContext(context.Background(), accessToken)
+	ctx, cancel := context.WithTimeout(
+		metadata.AppendToOutgoingContext(ctx, "authorization", "Bearer "+accessToken),
+		c.Deadline(),
+	)
 	defer cancel()
 
 	// Map vehicle string to RoutingMode enum

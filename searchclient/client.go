@@ -5,6 +5,7 @@ import (
 	"sync"
 
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/metadata"
 	"github.com/swayrider/grpcclients"
 	"github.com/swayrider/grpcclients/internal/client"
 	geo "github.com/swayrider/protos/common_types/geo"
@@ -76,7 +77,19 @@ func (c *Client) Ping() error {
 	return err
 }
 
+// Search calls searchservice with a fresh background context.
 func (c *Client) Search(
+	accessToken string,
+	query SearchQuery,
+	ctor SearchResultCtor,
+) ([]SearchResult, error) {
+	return c.SearchWithContext(context.Background(), accessToken, query, ctor)
+}
+
+// SearchWithContext calls searchservice, appending the authorization header to
+// any outgoing metadata already present in ctx (e.g. forwarded user identity).
+func (c *Client) SearchWithContext(
+	ctx context.Context,
 	accessToken string,
 	query SearchQuery,
 	ctor SearchResultCtor,
@@ -88,7 +101,10 @@ func (c *Client) Search(
 		return
 	}
 
-	ctx, cancel := c.AuthorizedContext(context.Background(), accessToken)
+	ctx, cancel := context.WithTimeout(
+		metadata.AppendToOutgoingContext(ctx, "authorization", "Bearer "+accessToken),
+		c.Deadline(),
+	)
 	defer cancel()
 
 	req := &searchv1.SearchRequest{
@@ -135,7 +151,19 @@ func (c *Client) Search(
 	return
 }
 
+// ReverseGeocode calls searchservice with a fresh background context.
 func (c *Client) ReverseGeocode(
+	accessToken string,
+	query ReverseGeocodeQuery,
+	ctor SearchResultCtor,
+) ([]SearchResult, error) {
+	return c.ReverseGeocodeWithContext(context.Background(), accessToken, query, ctor)
+}
+
+// ReverseGeocodeWithContext calls searchservice, appending the authorization header to
+// any outgoing metadata already present in ctx (e.g. forwarded user identity).
+func (c *Client) ReverseGeocodeWithContext(
+	ctx context.Context,
 	accessToken string,
 	query ReverseGeocodeQuery,
 	ctor SearchResultCtor,
@@ -147,7 +175,10 @@ func (c *Client) ReverseGeocode(
 		return
 	}
 
-	ctx, cancel := c.AuthorizedContext(context.Background(), accessToken)
+	ctx, cancel := context.WithTimeout(
+		metadata.AppendToOutgoingContext(ctx, "authorization", "Bearer "+accessToken),
+		c.Deadline(),
+	)
 	defer cancel()
 
 	req := &searchv1.ReverseGeocodeRequest{

@@ -6,6 +6,7 @@ import (
 	"sync"
 
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/metadata"
 	"github.com/swayrider/grpcclients"
 	"github.com/swayrider/grpcclients/internal/client"
 	"github.com/swayrider/protos/common_types/geo"
@@ -78,6 +79,7 @@ func (c *Client) Ping() error {
 }
 
 func (c *Client) SearchPoint(
+	token string,
 	location Coordinate,
 	includeExtended bool,
 ) (
@@ -88,7 +90,8 @@ func (c *Client) SearchPoint(
 		return
 	}
 
-	ctx, cancel := c.Context(context.Background())
+	base := metadata.AppendToOutgoingContext(context.Background(), "authorization", "Bearer "+token)
+	ctx, cancel := c.Context(base)
 	defer cancel()
 
 	res, err := c.Impl().SearchPoint(ctx, &regionv1.SearchPointRequest{
@@ -108,6 +111,7 @@ func (c *Client) SearchPoint(
 }
 
 func (c *Client) SearchBox(
+	token string,
 	boundingBox BoundingBox,
 	includeExtended bool,
 ) (
@@ -118,7 +122,8 @@ func (c *Client) SearchBox(
 		return
 	}
 
-	ctx, cancel := c.Context(context.Background())
+	base := metadata.AppendToOutgoingContext(context.Background(), "authorization", "Bearer "+token)
+	ctx, cancel := c.Context(base)
 	defer cancel()
 
 	res, err := c.Impl().SearchBox(ctx, &regionv1.SearchBoxRequest{
@@ -144,6 +149,7 @@ func (c *Client) SearchBox(
 }
 
 func (c *Client) SearchRadius(
+	token string,
 	location Coordinate,
 	radiusKm float64,
 	includeExtended bool,
@@ -155,7 +161,8 @@ func (c *Client) SearchRadius(
 		return
 	}
 
-	ctx, cancel := c.Context(context.Background())
+	base := metadata.AppendToOutgoingContext(context.Background(), "authorization", "Bearer "+token)
+	ctx, cancel := c.Context(base)
 	defer cancel()
 
 	res, err := c.Impl().SearchRadius(ctx, &regionv1.SearchRadiusRequest{
@@ -176,6 +183,7 @@ func (c *Client) SearchRadius(
 }
 
 func (c *Client) FindCrossingLocations(
+	token string,
 	fromRegion, toRegion string,
 	flomLocation, toLocation Coordinate,
 	config BorderCrossingConfig,
@@ -188,7 +196,8 @@ func (c *Client) FindCrossingLocations(
 		return
 	}
 
-	ctx, cancel := c.Context(context.Background())
+	base := metadata.AppendToOutgoingContext(context.Background(), "authorization", "Bearer "+token)
+	ctx, cancel := c.Context(base)
 	defer cancel()
 
 	var req *regionv1.FindCrossingLocationsRequest
@@ -269,6 +278,7 @@ func (c *Client) FindCrossingLocations(
 }
 
 func (c *Client) FindRegionPath(
+	token string,
 	fromRegion, toRegion string,
 ) (
 	path []string,
@@ -278,7 +288,8 @@ func (c *Client) FindRegionPath(
 		return
 	}
 
-	ctx, cancel := c.Context(context.Background())
+	base := metadata.AppendToOutgoingContext(context.Background(), "authorization", "Bearer "+token)
+	ctx, cancel := c.Context(base)
 	defer cancel()
 
 	res, err := c.Impl().FindRegionPath(ctx, &regionv1.FindRegionPathRequest{

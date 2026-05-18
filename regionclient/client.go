@@ -79,6 +79,7 @@ func (c *Client) Ping() error {
 }
 
 func (c *Client) SearchPoint(
+	ctx context.Context,
 	token string,
 	location Coordinate,
 	includeExtended bool,
@@ -90,11 +91,11 @@ func (c *Client) SearchPoint(
 		return
 	}
 
-	base := metadata.AppendToOutgoingContext(context.Background(), "authorization", "Bearer "+token)
-	ctx, cancel := c.Context(base)
+	base := metadata.AppendToOutgoingContext(ctx, "authorization", "Bearer "+token)
+	rpcCtx, cancel := c.Context(base)
 	defer cancel()
 
-	res, err := c.Impl().SearchPoint(ctx, &regionv1.SearchPointRequest{
+	res, err := c.Impl().SearchPoint(rpcCtx, &regionv1.SearchPointRequest{
 		Location: &geo.Coordinate{
 			Lat: location.Latitude,
 			Lon: location.Longitude,
@@ -111,6 +112,7 @@ func (c *Client) SearchPoint(
 }
 
 func (c *Client) SearchBox(
+	ctx context.Context,
 	token string,
 	boundingBox BoundingBox,
 	includeExtended bool,
@@ -122,11 +124,11 @@ func (c *Client) SearchBox(
 		return
 	}
 
-	base := metadata.AppendToOutgoingContext(context.Background(), "authorization", "Bearer "+token)
-	ctx, cancel := c.Context(base)
+	base := metadata.AppendToOutgoingContext(ctx, "authorization", "Bearer "+token)
+	rpcCtx, cancel := c.Context(base)
 	defer cancel()
 
-	res, err := c.Impl().SearchBox(ctx, &regionv1.SearchBoxRequest{
+	res, err := c.Impl().SearchBox(rpcCtx, &regionv1.SearchBoxRequest{
 		Box: &geo.BoundingBox{
 			BottomLeft: &geo.Coordinate{
 				Lat: boundingBox.BottomLeft.Latitude,
@@ -149,6 +151,7 @@ func (c *Client) SearchBox(
 }
 
 func (c *Client) SearchRadius(
+	ctx context.Context,
 	token string,
 	location Coordinate,
 	radiusKm float64,
@@ -161,11 +164,11 @@ func (c *Client) SearchRadius(
 		return
 	}
 
-	base := metadata.AppendToOutgoingContext(context.Background(), "authorization", "Bearer "+token)
-	ctx, cancel := c.Context(base)
+	base := metadata.AppendToOutgoingContext(ctx, "authorization", "Bearer "+token)
+	rpcCtx, cancel := c.Context(base)
 	defer cancel()
 
-	res, err := c.Impl().SearchRadius(ctx, &regionv1.SearchRadiusRequest{
+	res, err := c.Impl().SearchRadius(rpcCtx, &regionv1.SearchRadiusRequest{
 		Location: &geo.Coordinate{
 			Lat: location.Latitude,
 			Lon: location.Longitude,
@@ -183,6 +186,7 @@ func (c *Client) SearchRadius(
 }
 
 func (c *Client) FindCrossingLocations(
+	ctx context.Context,
 	token string,
 	fromRegion, toRegion string,
 	flomLocation, toLocation Coordinate,
@@ -196,8 +200,8 @@ func (c *Client) FindCrossingLocations(
 		return
 	}
 
-	base := metadata.AppendToOutgoingContext(context.Background(), "authorization", "Bearer "+token)
-	ctx, cancel := c.Context(base)
+	base := metadata.AppendToOutgoingContext(ctx, "authorization", "Bearer "+token)
+	rpcCtx, cancel := c.Context(base)
 	defer cancel()
 
 	var req *regionv1.FindCrossingLocationsRequest
@@ -249,13 +253,13 @@ func (c *Client) FindCrossingLocations(
 			},
 			Limit:            int32(limit),
 		}
-		
+
 	} else {
 		err = fmt.Errorf("unknown config type: %s", config.Type())
 		return
 	}
 
-	res, err := c.Impl().FindCrossingLocations(ctx, req)
+	res, err := c.Impl().FindCrossingLocations(rpcCtx, req)
 	if err != nil {
 		return
 	}
@@ -278,6 +282,7 @@ func (c *Client) FindCrossingLocations(
 }
 
 func (c *Client) FindRegionPath(
+	ctx context.Context,
 	token string,
 	fromRegion, toRegion string,
 ) (
@@ -288,11 +293,11 @@ func (c *Client) FindRegionPath(
 		return
 	}
 
-	base := metadata.AppendToOutgoingContext(context.Background(), "authorization", "Bearer "+token)
-	ctx, cancel := c.Context(base)
+	base := metadata.AppendToOutgoingContext(ctx, "authorization", "Bearer "+token)
+	rpcCtx, cancel := c.Context(base)
 	defer cancel()
 
-	res, err := c.Impl().FindRegionPath(ctx, &regionv1.FindRegionPathRequest{
+	res, err := c.Impl().FindRegionPath(rpcCtx, &regionv1.FindRegionPathRequest{
 		FromRegion: fromRegion,
 		ToRegion:   toRegion,
 	})
@@ -303,4 +308,3 @@ func (c *Client) FindRegionPath(
 	path = res.Path
 	return
 }
-

@@ -1,6 +1,8 @@
 package authclient
 
 import (
+	"time"
+
 	"github.com/swayrider/grpcclients/types"
 	authv1 "github.com/swayrider/protos/auth/v1"
 )
@@ -34,6 +36,14 @@ type ServiceClientCtor func(
 	description string,
 	scopes ...string,
 ) ServiceClient
+
+type Invite interface {
+	Id() string
+	Email() string
+	CreatedAt() time.Time
+}
+
+type InviteCtor func(id string, email string, createdAt time.Time) Invite
 
 type WhoIsOneOf any
 

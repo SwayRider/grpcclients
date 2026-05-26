@@ -667,3 +667,86 @@ func (c Client) ListServiceClients(
 	numClients = res.NumClients
 	return
 }
+
+func (c Client) InviteUser(
+	accessToken string,
+	email string,
+) (
+	message string,
+	err error,
+) {
+	if err = c.CheckConnection(); err != nil {
+		return
+	}
+
+	ctx, cancel := c.AuthorizedContext(context.Background(), accessToken)
+	defer cancel()
+
+	res, err := c.Impl().InviteUser(ctx, &authv1.InviteUserRequest{
+		Email: email,
+	})
+	if err != nil {
+		return
+	}
+
+	message = res.Message
+	return
+}
+
+func (c Client) RevokeInvite(
+	accessToken string,
+	email string,
+) (
+	message string,
+	err error,
+) {
+	if err = c.CheckConnection(); err != nil {
+		return
+	}
+
+	ctx, cancel := c.AuthorizedContext(context.Background(), accessToken)
+	defer cancel()
+
+	res, err := c.Impl().RevokeInvite(ctx, &authv1.RevokeInviteRequest{
+		Email: email,
+	})
+	if err != nil {
+		return
+	}
+
+	message = res.Message
+	return
+}
+
+func (c Client) ListInvites(
+	accessToken string,
+	page int,
+	pageSize int,
+	inviteCtor InviteCtor,
+) (
+	invites []Invite,
+	numInvites int32,
+	err error,
+) {
+	if err = c.CheckConnection(); err != nil {
+		return
+	}
+
+	ctx, cancel := c.AuthorizedContext(context.Background(), accessToken)
+	defer cancel()
+
+	res, err := c.Impl().ListInvites(ctx, &authv1.ListInvitesRequest{
+		Page:     int32(page),
+		PageSize: int32(pageSize),
+	})
+	if err != nil {
+		return
+	}
+
+	invites = make([]Invite, len(res.Invites))
+	for i, inv := range res.Invites {
+		invites[i] = inviteCtor(inv.Id, inv.Email, inv.CreatedAt.AsTime())
+	}
+	numInvites = res.NumInvites
+	return
+}

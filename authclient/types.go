@@ -41,9 +41,10 @@ type Invite interface {
 	Id() string
 	Email() string
 	CreatedAt() time.Time
+	Registered() bool
 }
 
-type InviteCtor func(id string, email string, createdAt time.Time) Invite
+type InviteCtor func(id string, email string, createdAt time.Time, registered bool) Invite
 
 type WhoIsOneOf any
 

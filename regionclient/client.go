@@ -308,3 +308,40 @@ func (c *Client) FindRegionPath(
 	path = res.Path
 	return
 }
+
+func (c *Client) FindRouteRegionPaths(
+	ctx context.Context,
+	token string,
+	waypoints []Coordinate,
+	widthKm float64,
+) (
+	paths [][]string,
+	err error,
+) {
+	if err = c.CheckConnection(); err != nil {
+		return
+	}
+
+	base := metadata.AppendToOutgoingContext(ctx, "authorization", "Bearer "+token)
+	rpcCtx, cancel := c.Context(base)
+	defer cancel()
+
+	wps := make([]*geo.Coordinate, 0, len(waypoints))
+	for _, wp := range waypoints {
+		wps = append(wps, &geo.Coordinate{Lat: wp.Latitude, Lon: wp.Longitude})
+	}
+
+	res, err := c.Impl().FindRouteRegionPaths(rpcCtx, &regionv1.FindRouteRegionPathsRequest{
+		Waypoints: wps,
+		WidthKm:   widthKm,
+	})
+	if err != nil {
+		return
+	}
+
+	paths = make([][]string, 0, len(res.Paths))
+	for _, p := range res.Paths {
+		paths = append(paths, p.Regions)
+	}
+	return
+}

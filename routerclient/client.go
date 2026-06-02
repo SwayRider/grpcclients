@@ -168,30 +168,21 @@ func (c Client) RouteWithContext(
 		unpavedHandling = &v
 	}
 
-	res, err := c.Impl().Route(ctx, &routerv1.RouteRequest{
-		Mode: mode,
-		Locations: []*routerv1.RouteLocation{
-			{
-				Location: &geo.Coordinate{
-					Lat: query.From.Latitude,
-					Lon: query.From.Longitude,
-				},
-				Type: routerv1.LocationType_L_BREAK,
-			},
-			{
-				Location: &geo.Coordinate{
-					Lat: query.To.Latitude,
-					Lon: query.To.Longitude,
-				},
-				Type: routerv1.LocationType_L_BREAK,
-			},
-		},
+	protoReq := &routerv1.RouteRequest{
+		Mode:             mode,
+		Locations:        buildLocations(query),
+		Unit:             toProtoUnit(query.Unit),
 		RouteOptions:     routeOptions,
 		ScenicPreference: scenicPref,
 		HighwayAvoidance: highwayAvoid,
 		TollAvoidance:    tollAvoid,
 		UnpavedHandling:  unpavedHandling,
-	})
+	}
+	if query.Language != "" {
+		protoReq.Language = &query.Language
+	}
+
+	res, err := c.Impl().Route(ctx, protoReq)
 	if err != nil {
 		return
 	}
@@ -234,6 +225,131 @@ func vehicleToRoutingMode(vehicle string) routerv1.RoutingMode {
 	default:
 		return routerv1.RoutingMode_RM_CAR
 	}
+}
+
+// RouteRaw calls routerservice and returns the full raw protobuf response.
+func (c Client) RouteRaw(
+	ctx context.Context,
+	accessToken string,
+	query RouteQuery,
+) (*routerv1.RouteResponse, error) {
+	if err := c.CheckConnection(); err != nil {
+		return nil, err
+	}
+
+	ctx, cancel := context.WithTimeout(
+		metadata.AppendToOutgoingContext(ctx, "authorization", "Bearer "+accessToken),
+		c.Deadline(),
+	)
+	defer cancel()
+
+	mode := vehicleToRoutingMode(query.Vehicle)
+
+	routeOptions := &routerv1.RouteOptions{}
+	if query.StandardRoutingOptions.AvoidTollRoads {
+		tollPref := float64(0)
+		routeOptions.TollwayPreference = &tollPref
+	}
+	if query.StandardRoutingOptions.AvoidHighways {
+		hwPref := float64(0)
+		routeOptions.HighwayPreference = &hwPref
+	}
+	if query.StandardRoutingOptions.AvoidFerries {
+		ferryPref := float64(0)
+		routeOptions.FerryPreference = &ferryPref
+	}
+	if query.StandardRoutingOptions.ScenicPreference > 0 {
+		routeOptions.TrailPreference = &query.StandardRoutingOptions.ScenicPreference
+	}
+	if query.StandardRoutingOptions.HighwayAvoidance > 0 {
+		routeOptions.HighwayPreference = func() *float64 {
+			v := 1.0 - query.StandardRoutingOptions.HighwayAvoidance
+			return &v
+		}()
+	}
+	if query.StandardRoutingOptions.TollAvoidance > 0 {
+		routeOptions.TollwayPreference = func() *float64 {
+			v := 1.0 - query.StandardRoutingOptions.TollAvoidance
+			return &v
+		}()
+	}
+
+	var scenicPref *float32
+	var highwayAvoid *float32
+	var tollAvoid *float32
+	var unpavedHandling *routerv1.UnpavedHandling
+
+	if query.StandardRoutingOptions.ScenicPreference > 0 {
+		v := float32(query.StandardRoutingOptions.ScenicPreference)
+		scenicPref = &v
+	}
+	if query.StandardRoutingOptions.HighwayAvoidance > 0 {
+		v := float32(query.StandardRoutingOptions.HighwayAvoidance)
+		highwayAvoid = &v
+	}
+	if query.StandardRoutingOptions.TollAvoidance > 0 {
+		v := float32(query.StandardRoutingOptions.TollAvoidance)
+		tollAvoid = &v
+	}
+	if query.StandardRoutingOptions.UnpavedHandling != "" {
+		v := unpdavedHandlingToProto(query.StandardRoutingOptions.UnpavedHandling)
+		unpavedHandling = &v
+	}
+
+	protoReq := &routerv1.RouteRequest{
+		Mode:             mode,
+		Locations:        buildLocations(query),
+		Unit:             toProtoUnit(query.Unit),
+		RouteOptions:     routeOptions,
+		ScenicPreference: scenicPref,
+		HighwayAvoidance: highwayAvoid,
+		TollAvoidance:    tollAvoid,
+		UnpavedHandling:  unpavedHandling,
+	}
+	if query.Language != "" {
+		protoReq.Language = &query.Language
+	}
+
+	res, err := c.Impl().Route(ctx, protoReq)
+	if err != nil {
+		return nil, err
+	}
+
+	if res.Trip == nil || res.Trip.Summary == nil {
+		return nil, errors.New("invalid route response: missing trip or summary")
+	}
+
+	return res, nil
+}
+
+func buildLocations(query RouteQuery) []*routerv1.RouteLocation {
+	locs := make([]*routerv1.RouteLocation, 0, 2+len(query.Waypoints))
+	locs = append(locs, &routerv1.RouteLocation{
+		Location: &geo.Coordinate{Lat: query.From.Latitude, Lon: query.From.Longitude},
+		Type:     routerv1.LocationType_L_BREAK,
+	})
+	for _, wp := range query.Waypoints {
+		locType := routerv1.LocationType_L_BREAK
+		if wp.Type == "through" {
+			locType = routerv1.LocationType_L_THROUGH
+		}
+		locs = append(locs, &routerv1.RouteLocation{
+			Location: &geo.Coordinate{Lat: wp.Coordinate.Latitude, Lon: wp.Coordinate.Longitude},
+			Type:     locType,
+		})
+	}
+	locs = append(locs, &routerv1.RouteLocation{
+		Location: &geo.Coordinate{Lat: query.To.Latitude, Lon: query.To.Longitude},
+		Type:     routerv1.LocationType_L_BREAK,
+	})
+	return locs
+}
+
+func toProtoUnit(unit string) routerv1.Unit {
+	if unit == "mi" {
+		return routerv1.Unit_U_IMPERIAL
+	}
+	return routerv1.Unit_U_METRIC
 }
 
 // Note: GeoCode functionality has been removed as the Geocode RPC

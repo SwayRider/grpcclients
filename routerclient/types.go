@@ -6,7 +6,7 @@ import (
 
 type RouteStep interface {
 	Instruction() string
-	DistanceInMeters() float64
+	DistanceKm() float64
 	Duration() time.Duration
 	Coordinate() Coordinate
 }
@@ -19,7 +19,7 @@ type RouteStepCtor func(
 ) RouteStep
 
 type Route interface {
-	DistanceInMeters() float64
+	DistanceKm() float64
 	Duration() time.Duration
 	Steps() []RouteStep
 	AddStep(RouteStep)
@@ -46,10 +46,18 @@ type StandardRoutingOptions struct {
 	UnpavedHandling  string
 }
 
+type Waypoint struct {
+	Coordinate Coordinate
+	Type       string // "break" or "through"
+}
+
 type RouteQuery struct {
 	From                   Coordinate
 	To                     Coordinate
+	Waypoints              []Waypoint
 	Vehicle                string
 	Algorithm              string
 	StandardRoutingOptions StandardRoutingOptions
+	Unit                   string // "km" or "mi"
+	Language               string
 }

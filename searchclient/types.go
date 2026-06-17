@@ -48,3 +48,10 @@ type ReverseGeocodeQuery struct {
 	Size     int32
 	Language string
 }
+
+type AutocompleteQuery struct {
+	Text       string
+	FocusPoint Coordinate
+	Size       int32
+	Language   string
+}

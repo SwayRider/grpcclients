@@ -151,6 +151,68 @@ func (c *Client) SearchWithContext(
 	return
 }
 
+// Autocomplete calls searchservice with a fresh background context.
+func (c *Client) Autocomplete(
+	accessToken string,
+	query AutocompleteQuery,
+	ctor SearchResultCtor,
+) ([]SearchResult, error) {
+	return c.AutocompleteWithContext(context.Background(), accessToken, query, ctor)
+}
+
+// AutocompleteWithContext calls searchservice, appending the authorization header to
+// any outgoing metadata already present in ctx.
+func (c *Client) AutocompleteWithContext(
+	ctx context.Context,
+	accessToken string,
+	query AutocompleteQuery,
+	ctor SearchResultCtor,
+) (
+	results []SearchResult,
+	err error,
+) {
+	if err = c.CheckConnection(); err != nil {
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(
+		metadata.AppendToOutgoingContext(ctx, "authorization", "Bearer "+accessToken),
+		c.Deadline(),
+	)
+	defer cancel()
+
+	req := &searchv1.AutocompleteRequest{
+		Text: query.Text,
+		FocusPoint: &geo.Coordinate{
+			Lat: query.FocusPoint.Latitude,
+			Lon: query.FocusPoint.Longitude,
+		},
+	}
+	if query.Size > 0 {
+		req.Size = &query.Size
+	}
+	if query.Language != "" {
+		req.Language = &query.Language
+	}
+
+	res, err := c.Impl().Autocomplete(ctx, req)
+	if err != nil {
+		return
+	}
+
+	results = make([]SearchResult, 0, len(res.Results))
+	for _, r := range res.Results {
+		results = append(results, ctor(
+			r.Label, r.Locality, r.Region, r.Country,
+			r.Confidence,
+			r.Layer,
+			r.Lat, r.Lon,
+			r.Street, r.Housenumber, r.Id, r.Localadmin, r.CountryCode, r.Name,
+		))
+	}
+	return
+}
+
 // ReverseGeocode calls searchservice with a fresh background context.
 func (c *Client) ReverseGeocode(
 	accessToken string,

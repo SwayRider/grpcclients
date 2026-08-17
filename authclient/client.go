@@ -7,12 +7,33 @@ import (
 	"time"
 
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/metadata"
 	"github.com/swayrider/grpcclients"
 	"github.com/swayrider/grpcclients/internal/client"
 	"github.com/swayrider/grpcclients/types"
 	authv1 "github.com/swayrider/protos/auth/v1"
 	healthv1 "github.com/swayrider/protos/health/v1"
 )
+
+// ClientInfo carries optional client-identity metadata to forward to the
+// service on authentication calls. The IP is the client IP as resolved by
+// the calling gateway (single, trusted value), forwarded under x-orig-ip so
+// the service can bind refresh tokens / audit requests without trusting
+// client-supplied X-Forwarded-For. Omit for calls that carry no client
+// context (e.g. admin CLI logins).
+type ClientInfo struct {
+	IP string
+}
+
+// clientInfoContext attaches the forwarded client info as outgoing gRPC
+// metadata. Empty values are skipped so unauthenticated callers produce no
+// metadata at all.
+func clientInfoContext(ctx context.Context, info ...ClientInfo) context.Context {
+	if len(info) > 0 && info[0].IP != "" {
+		return metadata.AppendToOutgoingContext(ctx, "x-orig-ip", info[0].IP)
+	}
+	return ctx
+}
 
 type Client struct {
 	*client.Client[authv1.AuthServiceClient]
@@ -198,6 +219,7 @@ func (c Client) VerifyEmail(
 func (c Client) Login(
 	email, password string,
 	rememberMe bool,
+	info ...ClientInfo,
 ) (
 	accessToken string,
 	refreshToken string,
@@ -207,7 +229,7 @@ func (c Client) Login(
 		return
 	}
 
-	ctx, cancel := c.Context(context.Background())
+	ctx, cancel := c.Context(clientInfoContext(context.Background(), info...))
 	defer cancel()
 
 	res, err := c.Impl().Login(
@@ -288,6 +310,7 @@ func (c Client) GetToken(
 func (c Client) Refresh(
 	refreshToken string,
 	rememberMe bool,
+	info ...ClientInfo,
 ) (
 	newAccessToken string,
 	newRefreshToken string,
@@ -297,7 +320,7 @@ func (c Client) Refresh(
 		return
 	}
 
-	ctx, cancel := c.Context(context.Background())
+	ctx, cancel := c.Context(clientInfoContext(context.Background(), info...))
 	defer cancel()
 
 	res, err := c.Impl().Refresh(

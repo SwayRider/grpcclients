@@ -98,28 +98,6 @@ func (c Client) SendTemplate(
 	return
 }
 
-func (c Client) SendTemplateInternal(
-	mail *TemplateMail,
-) (
-	message string,
-	err error,
-) {
-	if err = c.CheckConnection(); err != nil {
-		return
-	}
-
-	ctx, cancel := c.Context(context.Background())
-	defer cancel()
-
-	res, err := c.Impl().SendTemplateInternal(ctx, mail.Request())
-	if err != nil {
-		return
-	}
-
-	message = res.Message
-	return
-}
-
 func (c Client) Send(
 	accessToken string,
 	mail *Mail,
@@ -135,28 +113,6 @@ func (c Client) Send(
 	defer cancel()
 
 	res, err := c.Impl().Send(ctx, mail.Request())
-	if err != nil {
-		return
-	}
-
-	message = res.Message
-	return
-}
-
-func (c Client) SendInternal(
-	mail *Mail,
-) (
-	message string,
-	err error,
-) {
-	if err = c.CheckConnection(); err != nil {
-		return
-	}
-
-	ctx, cancel := c.Context(context.Background())
-	defer cancel()
-
-	res, err := c.Impl().SendInternal(ctx, mail.Request())
 	if err != nil {
 		return
 	}

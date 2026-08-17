@@ -73,11 +73,8 @@ Methods that require a user JWT accept `accessToken string` as their first argum
 message, err := mailClient.Send(accessToken, mail)
 ```
 
-Services with "internal" variants (mail) accept no token and are intended for server-to-server calls:
-
-```go
-message, err := mailClient.SendInternal(mail)
-```
+Server-to-server callers (e.g. authservice calling mailservice) authenticate the same way, using a
+service-client token scoped to the RPC's required scope (e.g. `email:send`) instead of a user JWT.
 
 ## Deadlines
 

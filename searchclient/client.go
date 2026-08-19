@@ -43,7 +43,7 @@ func (c *Client) CheckConnection() error {
 
 	err := c.Ping()
 	if err != nil {
-		c.Close()
+		_ = c.Close()
 		return c.newConnection()
 	}
 	return nil

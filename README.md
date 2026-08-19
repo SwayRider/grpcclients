@@ -96,15 +96,9 @@ user, err := authClient.WhoIs(accessToken, authclient.WhoIs_Email("alice@example
 user, err := authClient.WhoIs(accessToken, authclient.WhoIs_UserId("usr_123"), userCtor)
 ```
 
-### PublicKeyFetcher
+### Fetching public keys
 
-For JWT verification, `authclient.PublicKeyFetcher` is a background goroutine that fetches the service's public keys, sends them on a channel, and then refreshes every hour:
-
-```go
-keysChan := make(chan []string, 1)
-go authclient.PublicKeyFetcher(ctx, authClient, keysChan)
-keys := <-keysChan // blocks until first fetch succeeds
-```
+`authclient.Client.PublicKeys()` returns the service's current JWT verification public keys with a single RPC call. For a background-refreshed, hardened cache (retains last-known-good keys on failure, bounded fetch timeout, configurable interval), use `swlib/jwtkeys.Cache` instead — see swlib's README for `jwtkeys.New`, `app.JWTKeysConfigFields()`, `app.JWTKeysInitializer()`, and `app.JWTKeysFetcher()`.
 
 ## Keeping clients in sync with protos
 

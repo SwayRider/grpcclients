@@ -73,11 +73,8 @@ Methods that require a user JWT accept `accessToken string` as their first argum
 message, err := mailClient.Send(accessToken, mail)
 ```
 
-Services with "internal" variants (mail) accept no token and are intended for server-to-server calls:
-
-```go
-message, err := mailClient.SendInternal(mail)
-```
+Server-to-server callers (e.g. authservice calling mailservice) authenticate the same way, using a
+service-client token scoped to the RPC's required scope (e.g. `email:send`) instead of a user JWT.
 
 ## Deadlines
 
@@ -99,15 +96,9 @@ user, err := authClient.WhoIs(accessToken, authclient.WhoIs_Email("alice@example
 user, err := authClient.WhoIs(accessToken, authclient.WhoIs_UserId("usr_123"), userCtor)
 ```
 
-### PublicKeyFetcher
+### Fetching public keys
 
-For JWT verification, `authclient.PublicKeyFetcher` is a background goroutine that fetches the service's public keys, sends them on a channel, and then refreshes every hour:
-
-```go
-keysChan := make(chan []string, 1)
-go authclient.PublicKeyFetcher(ctx, authClient, keysChan)
-keys := <-keysChan // blocks until first fetch succeeds
-```
+`authclient.Client.PublicKeys()` returns the service's current JWT verification public keys with a single RPC call. For a background-refreshed, hardened cache (retains last-known-good keys on failure, bounded fetch timeout, configurable interval), use `swlib/jwtkeys.Cache` instead — see swlib's README for `jwtkeys.New`, `app.JWTKeysConfigFields()`, `app.JWTKeysInitializer()`, and `app.JWTKeysFetcher()`.
 
 ## Keeping clients in sync with protos
 

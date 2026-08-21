@@ -6,13 +6,13 @@ import (
 	"sync"
 	"time"
 
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/metadata"
 	"github.com/swayrider/grpcclients"
 	"github.com/swayrider/grpcclients/internal/client"
 	"github.com/swayrider/grpcclients/types"
 	authv1 "github.com/swayrider/protos/auth/v1"
 	healthv1 "github.com/swayrider/protos/health/v1"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/metadata"
 )
 
 // ClientInfo carries optional client-identity metadata to forward to the
@@ -223,6 +223,8 @@ func (c Client) Login(
 ) (
 	accessToken string,
 	refreshToken string,
+	mfaRequired bool,
+	mfaToken string,
 	err error,
 ) {
 	if err = c.CheckConnection(); err != nil {
@@ -246,6 +248,168 @@ func (c Client) Login(
 
 	accessToken = res.AccessToken
 	refreshToken = res.RefreshToken
+	mfaRequired = res.MfaRequired
+	mfaToken = res.MfaToken
+	return
+}
+
+// SetupMFA starts TOTP enrollment for the authenticated user: it returns the
+// base32 secret (shown once, for manual entry into an authenticator app), the
+// otpauth URL, and a server-rendered QR PNG of the URL (base64-encoded). The
+// secret is not returned again after this call.
+func (c Client) SetupMFA(
+	accessToken string,
+) (
+	secret string,
+	otpauthURL string,
+	qrPNGBase64 string,
+	err error,
+) {
+	if err = c.CheckConnection(); err != nil {
+		return
+	}
+
+	ctx, cancel := c.AuthorizedContext(context.Background(), accessToken)
+	defer cancel()
+
+	res, err := c.Impl().SetupMFA(ctx, &authv1.SetupMFARequest{})
+	if err != nil {
+		return
+	}
+
+	secret = res.Secret
+	otpauthURL = res.OtpauthUrl
+	qrPNGBase64 = res.QrPngBase64
+	return
+}
+
+// EnableMFA completes enrollment: the user proves control of the pending
+// secret by presenting a valid TOTP code. Returns the fresh backup-code set
+// (plaintext, shown once).
+func (c Client) EnableMFA(
+	accessToken string,
+	code string,
+) (
+	backupCodes []string,
+	err error,
+) {
+	if err = c.CheckConnection(); err != nil {
+		return
+	}
+
+	ctx, cancel := c.AuthorizedContext(context.Background(), accessToken)
+	defer cancel()
+
+	res, err := c.Impl().EnableMFA(ctx, &authv1.EnableMFARequest{Code: code})
+	if err != nil {
+		return
+	}
+
+	backupCodes = res.BackupCodes
+	return
+}
+
+// DisableMFA turns MFA off for the authenticated user. The caller's password
+// is required and verified by the service.
+func (c Client) DisableMFA(
+	accessToken string,
+	password string,
+) (
+	err error,
+) {
+	if err = c.CheckConnection(); err != nil {
+		return
+	}
+
+	ctx, cancel := c.AuthorizedContext(context.Background(), accessToken)
+	defer cancel()
+
+	_, err = c.Impl().DisableMFA(ctx, &authv1.DisableMFARequest{Password: password})
+	return
+}
+
+// GetMFAStatus reports whether the authenticated user has MFA enabled.
+func (c Client) GetMFAStatus(
+	accessToken string,
+) (
+	enabled bool,
+	err error,
+) {
+	if err = c.CheckConnection(); err != nil {
+		return
+	}
+
+	ctx, cancel := c.AuthorizedContext(context.Background(), accessToken)
+	defer cancel()
+
+	res, err := c.Impl().GetMFAStatus(ctx, &authv1.GetMFAStatusRequest{})
+	if err != nil {
+		return
+	}
+
+	enabled = res.Enabled
+	return
+}
+
+// VerifyMFA completes a pending-login MFA challenge (issued by Login when the
+// account has MFA enabled) with a TOTP code or single-use backup code. On
+// success the normal token pair is returned, exactly like a completed Login.
+// ClientInfo.IP is forwarded like Login/Refresh so the issued refresh token
+// is bound to the same client IP the gateway resolved once.
+func (c Client) VerifyMFA(
+	mfaToken string,
+	code string,
+	rememberMe bool,
+	info ...ClientInfo,
+) (
+	accessToken string,
+	refreshToken string,
+	err error,
+) {
+	if err = c.CheckConnection(); err != nil {
+		return
+	}
+
+	ctx, cancel := c.Context(clientInfoContext(context.Background(), info...))
+	defer cancel()
+
+	res, err := c.Impl().VerifyMFA(ctx, &authv1.VerifyMFARequest{
+		MfaToken:   mfaToken,
+		Code:       code,
+		RememberMe: rememberMe,
+	})
+	if err != nil {
+		return
+	}
+
+	accessToken = res.AccessToken
+	refreshToken = res.RefreshToken
+	return
+}
+
+// GenerateBackupCodes replaces the authenticated user's backup-code set with
+// a fresh one (invalidating the previous set). The caller's password is
+// required. The new plaintext codes are returned once.
+func (c Client) GenerateBackupCodes(
+	accessToken string,
+	password string,
+) (
+	backupCodes []string,
+	err error,
+) {
+	if err = c.CheckConnection(); err != nil {
+		return
+	}
+
+	ctx, cancel := c.AuthorizedContext(context.Background(), accessToken)
+	defer cancel()
+
+	res, err := c.Impl().GenerateBackupCodes(ctx, &authv1.GenerateBackupCodesRequest{Password: password})
+	if err != nil {
+		return
+	}
+
+	backupCodes = res.BackupCodes
 	return
 }
 

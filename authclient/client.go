@@ -705,6 +705,34 @@ func (c Client) RequestPasswordReset(
 	return
 }
 
+func (c Client) RequestMfaReset(
+	email string,
+	password string,
+	backupCode string,
+	mfaResetUrl string,
+) (
+	err error,
+) {
+	if err = c.CheckConnection(); err != nil {
+		return
+	}
+
+	ctx, cancel := c.Context(context.Background())
+	defer cancel()
+
+	_, err = c.Impl().RequestMfaReset(ctx, &authv1.RequestMfaResetRequest{
+		Email:       email,
+		Password:    password,
+		BackupCode:  backupCode,
+		MfaResetUrl: mfaResetUrl,
+	})
+	if err != nil {
+		return
+	}
+
+	return
+}
+
 func (c Client) ResetPassword(
 	userId string,
 	token string,

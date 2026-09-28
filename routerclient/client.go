@@ -330,8 +330,11 @@ func buildLocations(query RouteQuery) []*routerv1.RouteLocation {
 	})
 	for _, wp := range query.Waypoints {
 		locType := routerv1.LocationType_L_BREAK
-		if wp.Type == "through" {
+		switch wp.Type {
+		case "through":
 			locType = routerv1.LocationType_L_THROUGH
+		case "via":
+			locType = routerv1.LocationType_L_VIA
 		}
 		locs = append(locs, &routerv1.RouteLocation{
 			Location: &geo.Coordinate{Lat: wp.Coordinate.Latitude, Lon: wp.Coordinate.Longitude},

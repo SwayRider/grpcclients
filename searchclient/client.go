@@ -4,13 +4,13 @@ import (
 	"context"
 	"sync"
 
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/metadata"
 	"github.com/swayrider/grpcclients"
 	"github.com/swayrider/grpcclients/internal/client"
 	geo "github.com/swayrider/protos/common_types/geo"
 	healthv1 "github.com/swayrider/protos/health/v1"
 	searchv1 "github.com/swayrider/protos/search/v1"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/metadata"
 )
 
 type Client struct {
@@ -187,6 +187,7 @@ func (c *Client) AutocompleteWithContext(
 			Lat: query.FocusPoint.Latitude,
 			Lon: query.FocusPoint.Longitude,
 		},
+		TargetHousenumber: query.TargetHousenumber,
 	}
 	if query.Size > 0 {
 		req.Size = &query.Size

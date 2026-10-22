@@ -391,12 +391,15 @@ func unpdavedHandlingToProto(h string) routerv1.UnpavedHandling {
 	}
 }
 
-// RejoinRaw calls routerservice's Rejoin and returns the raw response.
-func (c Client) RejoinRaw(
+// RerouteRaw calls routerservice's Reroute and returns the raw response: a new
+// route from query.From (with FromHeading, the rider's direction of travel)
+// through the remaining stops, avoiding query.ExcludePolygons. The service
+// prefers a route in the direction of travel unless that is much slower.
+func (c Client) RerouteRaw(
 	ctx context.Context,
 	accessToken string,
-	query RejoinQuery,
-) (*routerv1.RejoinResponse, error) {
+	query RouteQuery,
+) (*routerv1.RouteResponse, error) {
 	if err := c.CheckConnection(); err != nil {
 		return nil, err
 	}
@@ -407,21 +410,12 @@ func (c Client) RejoinRaw(
 	)
 	defer cancel()
 
-	protoReq := &routerv1.RejoinRequest{Fresh: buildRouteRequest(query.Fresh)}
-	for _, point := range query.Points {
-		protoReq.RejoinPoints = append(protoReq.RejoinPoints, &routerv1.RejoinPoint{
-			Location:         &geo.Coordinate{Lat: point.Coordinate.Latitude, Lon: point.Coordinate.Longitude},
-			Heading:          int32(point.Heading),
-			RemainingSeconds: point.RemainingSeconds,
-		})
-	}
-
-	res, err := c.Impl().Rejoin(ctx, protoReq)
+	res, err := c.Impl().Reroute(ctx, buildRouteRequest(query))
 	if err != nil {
 		return nil, err
 	}
 	if res.Trip == nil || res.Trip.Summary == nil {
-		return nil, errors.New("invalid rejoin response: missing trip or summary")
+		return nil, errors.New("invalid reroute response: missing trip or summary")
 	}
 	return res, nil
 }

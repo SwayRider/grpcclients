@@ -3,7 +3,7 @@ module github.com/swayrider/grpcclients
 go 1.26.2
 
 require (
-	github.com/swayrider/protos v0.2.1-0.20261022154320-f752e797293e
+	github.com/swayrider/protos v0.2.1-0.20261022184342-1c42b223b738
 	google.golang.org/grpc v1.80.0
 )
 
